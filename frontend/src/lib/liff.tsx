@@ -1,11 +1,8 @@
-"use client";
-
 import React, { createContext, useContext, useEffect, useState } from "react";
 import liff from "@line/liff";
-import type { Liff } from "@line/liff";
 
 interface LiffContextType {
-  liff: Liff | null;
+  liff: typeof liff | null;
   isReady: boolean;
   error: string | null;
 }
@@ -16,39 +13,29 @@ const LiffContext = createContext<LiffContextType>({
   error: null,
 });
 
-export const useLiff = () => useContext(LiffContext);
-
-export const LiffProvider: React.FC<{ children: React.ReactNode; liffId: string }> = ({
-  children,
+export const LiffProvider: React.FC<{ liffId: string; children: React.ReactNode }> = ({
   liffId,
+  children,
 }) => {
-  const [liffObject, setLiffObject] = useState<Liff | null>(null);
   const [isReady, setIsReady] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const initLiff = async () => {
-      if (!liffId) {
-        setError("LIFF ID is required");
-        return;
-      }
-
-      try {
-        await liff.init({ liffId });
-        setLiffObject(liff);
+    liff
+      .init({ liffId })
+      .then(() => {
         setIsReady(true);
-      } catch (err: unknown) {
-        console.error("LIFF init failed", err);
-        setError(err instanceof Error ? err.message : "Unknown error");
-      }
-    };
-
-    initLiff();
+      })
+      .catch((err: Error) => {
+        setError(err.toString());
+      });
   }, [liffId]);
 
   return (
-    <LiffContext.Provider value={{ liff: liffObject, isReady, error }}>
+    <LiffContext.Provider value={{ liff, isReady, error }}>
       {children}
     </LiffContext.Provider>
   );
 };
+
+export const useLiff = () => useContext(LiffContext);
