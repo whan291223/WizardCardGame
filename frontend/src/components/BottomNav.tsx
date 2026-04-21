@@ -19,7 +19,7 @@ export const BottomNav: React.FC = () => {
   ];
 
   return (
-    <nav className="fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-4 pb-6 pt-3 bg-[#101417]/90 backdrop-blur-xl border-t border-[#c9bfff]/15 rounded-t-[2rem] shadow-[0_-10px_40px_rgba(0,0,0,0.5)]">
+    <nav className="fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-4 pb-6 pt-3 bg-[#101417]/90 backdrop-blur-xl border-t border-[#c9bfff]/15 rounded-t-4xl shadow-[0_-10px_40px_rgba(0,0,0,0.5)]">
       {navItems.map((item) => (
         <Link
           key={item.label}

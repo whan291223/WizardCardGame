@@ -61,7 +61,7 @@ export const WizardCard: React.FC<WizardCardProps> = ({
           </span>
         )}
       </div>
-      <div className="flex-grow flex items-center justify-center">
+      <div className="grow flex items-center justify-center">
         {suit && (
           <span
             className={cn(

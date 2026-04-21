@@ -2,12 +2,46 @@ import React from "react";
 import { TopBar } from "../components/TopBar";
 import { BottomNav } from "../components/BottomNav";
 import { Bolt, Key, PlusCircle, Award, Sparkles, MoveRight } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
 export const Lobby: React.FC = () => {
+  const navigate = useNavigate();
+  const userId = 1; // Simplified: hardcoded user ID
+
+  const handleCreateRoom = async () => {
+    try {
+      const response = await fetch("/api/v1/games/", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: `Game ${Math.floor(Math.random() * 1000)}` }),
+      });
+      if (!response.ok) throw new Error("Failed to create game");
+      const game = await response.json();
+
+      // Join the game after creating it
+      await fetch(`/api/v1/games/${game.id}/join?user_id=${userId}`, { method: "POST" });
+
+      navigate(`/arena?gameId=${game.id}&userId=${userId}`);
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const handleJoinRoom = async () => {
+    const gameId = prompt("Enter Game ID:");
+    if (!gameId) return;
+    try {
+      await fetch(`/api/v1/games/${gameId}/join?user_id=${userId}`, { method: "POST" });
+      navigate(`/arena?gameId=${gameId}&userId=${userId}`);
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
   return (
     <div className="min-h-screen flex flex-col wizard-gradient">
       <TopBar />
-      <main className="flex-grow container mx-auto px-6 py-12 mb-24 overflow-y-auto">
+      <main className="grow container mx-auto px-6 py-12 mb-24 overflow-y-auto">
         {/* Hero Section */}
         <section className="mb-16">
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-end">
@@ -20,7 +54,7 @@ export const Lobby: React.FC = () => {
               </p>
             </div>
             {/* Profile Stats Card */}
-            <div className="lg:col-span-4 glass-card p-8 rounded-[2rem] border border-primary/10 arcane-glow">
+            <div className="lg:col-span-4 glass-card p-8 rounded-4xl border border-primary/10 arcane-glow">
               <div className="flex justify-between items-start mb-8">
                 <div>
                   <p className="font-label text-xs uppercase tracking-widest text-primary mb-1">Current Rank</p>
@@ -53,6 +87,7 @@ export const Lobby: React.FC = () => {
             accentColor="from-primary/20"
             buttonLabel="Enter Queue"
             buttonColor="text-primary"
+            onClick={handleCreateRoom}
           />
           <ActionCard
             title="Join Room"
@@ -61,6 +96,7 @@ export const Lobby: React.FC = () => {
             accentColor="from-tertiary-container/20"
             buttonLabel="Find Table"
             buttonColor="text-tertiary-container"
+            onClick={handleJoinRoom}
           />
           <ActionCard
             title="Create Room"
@@ -69,12 +105,13 @@ export const Lobby: React.FC = () => {
             accentColor="from-secondary-fixed/20"
             buttonLabel="New Session"
             buttonColor="text-secondary-fixed"
+            onClick={handleCreateRoom}
           />
         </section>
 
         {/* Active Tables / Social Bento */}
         <section className="mt-16 grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div className="glass-card rounded-[2rem] p-8 border border-white/5">
+          <div className="glass-card rounded-4xl p-8 border border-white/5">
             <div className="flex justify-between items-center mb-6">
               <h3 className="font-headline text-xl font-bold tracking-tight uppercase">Live Tables</h3>
               <span className="text-xs font-label text-primary bg-primary/10 px-3 py-1 rounded-full">241 Active</span>
@@ -85,7 +122,7 @@ export const Lobby: React.FC = () => {
               <LiveTableItem name="Casual Friday" players="Full" />
             </div>
           </div>
-          <div className="glass-card rounded-[2rem] p-8 border border-white/5 flex flex-col justify-center items-center text-center relative overflow-hidden">
+          <div className="glass-card rounded-4xl p-8 border border-white/5 flex flex-col justify-center items-center text-center relative overflow-hidden">
             <div className="absolute inset-0 z-0 opacity-10">
               <img
                 alt="Background Cards"
@@ -118,9 +155,10 @@ const ActionCard: React.FC<{
   accentColor: string;
   buttonLabel: string;
   buttonColor: string;
-}> = ({ title, description, icon, accentColor, buttonLabel, buttonColor }) => (
-  <div className="group relative overflow-hidden glass-card p-1 rounded-[2.5rem] transition-all hover:translate-y-[-8px] cursor-pointer">
-    <div className={`absolute inset-0 bg-gradient-to-br ${accentColor} to-transparent opacity-0 group-hover:opacity-100 transition-opacity`} />
+  onClick?: () => void;
+}> = ({ title, description, icon, accentColor, buttonLabel, buttonColor, onClick }) => (
+  <div onClick={onClick} className="group relative overflow-hidden glass-card p-1 rounded-[2.5rem] transition-all hover:-translate-y-2 cursor-pointer">
+    <div className={`absolute inset-0 bg-linear-to-br ${accentColor} to-transparent opacity-0 group-hover:opacity-100 transition-opacity`} />
     <div className="relative bg-surface-container-highest/60 rounded-[2.4rem] p-8 h-full flex flex-col justify-between border border-white/5">
       <div className="mb-12">
         <div className="w-16 h-16 rounded-2xl bg-white/5 flex items-center justify-center mb-6">{icon}</div>
