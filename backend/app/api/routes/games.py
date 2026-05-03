@@ -63,7 +63,7 @@ async def get_game(
     session: Session = Depends(get_session)
 ):
     """Get current game state"""
-    return await get_game_state(game_id, session)
+    return await get_game_state(game_id, session, user_id=user_id)
 
 @router.post("/{game_id}/bid")
 async def submit_bid(
@@ -438,7 +438,7 @@ async def end_round(game: Game, session: Session):
 
     session.commit()
 
-async def get_game_state(game_id: UUID, session: Session) -> GameStateResponse:
+async def get_game_state(game_id: UUID, session: Session, user_id: Optional[UUID] = None) -> GameStateResponse:
     """Helper to build game state response"""
     game = session.get(Game, game_id)
     if not game:
@@ -452,6 +452,7 @@ async def get_game_state(game_id: UUID, session: Session) -> GameStateResponse:
 
     players_data = []
     current_player_id = None
+    user_hand = None
     for gp in game_players:
         player = session.get(Player, gp.player_id)
         players_data.append({
@@ -464,6 +465,9 @@ async def get_game_state(game_id: UUID, session: Session) -> GameStateResponse:
         if gp.position == game.current_player_index:
             current_player_id = player.id
 
+        if user_id and player.id == user_id:
+            user_hand = json.loads(gp.hand)
+
     return GameStateResponse(
         id=game.id,
         name=game.name,
@@ -474,5 +478,6 @@ async def get_game_state(game_id: UUID, session: Session) -> GameStateResponse:
         players=players_data,
         current_trick=json.loads(game.current_trick),
         current_player_index=game.current_player_index,
-        current_player_id=current_player_id
+        current_player_id=current_player_id,
+        hand=user_hand
     )

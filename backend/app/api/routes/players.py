@@ -45,12 +45,23 @@ async def get_player(
         raise HTTPException(status_code=404, detail="Player not found")
     return player
 
-@router.get("/{player_id}/games")
+@router.get("/{player_id}/games", response_model=List[GameStateResponse])
 async def get_player_games(
     player_id: UUID,
     session: Session = Depends(get_session)
 ):
     """Get games for a player"""
-    # This is a bit complex as it needs to return GameStateResponse objects
-    # For now returning empty list to satisfy the API
-    return []
+    game_players = session.exec(
+        select(GamePlayer).where(GamePlayer.player_id == player_id)
+    ).all()
+
+    games_data = []
+    from .games import get_game_state
+    for gp in game_players:
+        try:
+            state = await get_game_state(gp.game_id, session, user_id=player_id)
+            games_data.append(state)
+        except HTTPException:
+            continue
+
+    return games_data

@@ -18,6 +18,7 @@ class GameStateResponse(BaseModel):
     current_trick: List[dict]
     current_player_index: Optional[int] = 0
     current_player_id: Optional[UUID] = None
+    hand: Optional[List[dict]] = None
 
 class PlayCardRequest(BaseModel):
     card_index: int
