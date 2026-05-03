@@ -19,6 +19,8 @@ class Game(SQLModel, table=True):
     __tablename__ = "games"
 
     id: UUID = Field(default_factory=uuid4, primary_key=True)
+    name: str = Field(default="Wizard Game")
+    max_rounds: int = Field(default=15)
     status: GameStatus = Field(default=GameStatus.WAITING)
     current_round: int = Field(default=1)
     trump_suit: Optional[str] = None
