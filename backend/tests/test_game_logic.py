@@ -26,14 +26,14 @@ def test_calculate_score():
 def test_evaluate_trick():
     # Wizard wins
     trick = [
-        (Card(type=CardType.NORMAL, suit=Suit.HEARTS, value=14), 0),
+        (Card(type=CardType.NORMAL, suit=Suit.FLARE, value=14), 0),
         (Card(type=CardType.WIZARD), 1),
     ]
-    assert WizardGameEngine.evaluate_trick(trick, None, Suit.HEARTS) == 1
+    assert WizardGameEngine.evaluate_trick(trick, None, Suit.FLARE) == 1
 
     # Trump wins
     trick = [
-        (Card(type=CardType.NORMAL, suit=Suit.HEARTS, value=14), 0),
-        (Card(type=CardType.NORMAL, suit=Suit.SPADES, value=2), 1),
+        (Card(type=CardType.NORMAL, suit=Suit.FLARE, value=14), 0),
+        (Card(type=CardType.NORMAL, suit=Suit.STAR, value=2), 1),
     ]
-    assert WizardGameEngine.evaluate_trick(trick, Suit.SPADES, Suit.HEARTS) == 1
+    assert WizardGameEngine.evaluate_trick(trick, Suit.STAR, Suit.FLARE) == 1

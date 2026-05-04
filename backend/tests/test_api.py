@@ -40,9 +40,9 @@ def test_health_check(client: TestClient):
 def test_create_game(client: TestClient):
     response = client.post(
         "/api/v1/games/",
-        params={"player_name": "TestPlayer"}
+        json={"name": "Test Game", "player_name": "TestPlayer"}
     )
     assert response.status_code == 200
     data = response.json()
-    assert "game_id" in data
+    assert "id" in data
     assert data["current_round"] == 1

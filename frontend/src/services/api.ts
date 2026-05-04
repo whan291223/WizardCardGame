@@ -48,6 +48,7 @@ class ApiService {
   async createGame(playerName: string): Promise<GameState> {
     const response = await this.client.post('/games/', {
       name: `${playerName}'s Game`,
+      player_name: playerName,
     });
     return response.data;
   }
@@ -93,15 +94,14 @@ class ApiService {
 
   // Player endpoints
   async createPlayer(name: string): Promise<Player> {
-    const response = await this.client.post('/users/', {
-      username: name,
-      email: `${name.toLowerCase().replace(/\s+/g, '.')}@example.com`,
-      password: 'password123'
+    const response = await this.client.post('/players/', {
+      name: name,
+      is_bot: false,
     });
     const userData = response.data;
     return {
       id: userData.id.toString(),
-      name: userData.username,
+      name: userData.name,
       is_bot: false,
       score: 0,
       position: 0

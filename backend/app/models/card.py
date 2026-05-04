@@ -8,10 +8,10 @@ class CardType(str, Enum):
     JESTER = "jester"
 
 class Suit(str, Enum):
-    SPADES = "spades"
-    HEARTS = "hearts"
-    CLUBS = "clubs"
-    DIAMONDS = "diamonds"
+    FLARE = "flare"
+    POTTED_PLANT = "potted_plant"
+    STAR = "star"
+    NEARBY = "nearby"
 
 class Card(SQLModel):
     """Card representation (not stored in DB, used in-memory)"""

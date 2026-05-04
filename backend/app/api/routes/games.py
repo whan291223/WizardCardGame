@@ -1,6 +1,6 @@
 from fastapi import APIRouter, HTTPException, Depends
 from sqlmodel import Session, select
-from typing import List
+from typing import List, Optional
 from uuid import UUID
 import json
 
@@ -11,19 +11,19 @@ from app.models.round import Round, Bid
 from app.models.card import Card, Suit
 from app.core.game_logic import WizardGameEngine
 from app.core.bot_ai import BotAI
-from app.schemas.game import GameStateResponse, PlayCardRequest, BidRequest
+from app.schemas.game import GameStateResponse, PlayCardRequest, BidRequest, GameCreate
 
 router = APIRouter(prefix="/games", tags=["games"])
 
 @router.post("/", response_model=GameStateResponse)
 async def create_game(
-    player_name: str,
+    request: GameCreate,
     session: Session = Depends(get_session)
 ):
     """Create a new game with 1 human player and 3 bots"""
 
     # Create human player
-    human_player = Player(name=player_name, is_bot=False)
+    human_player = Player(name=request.player_name or "Human", is_bot=False)
     session.add(human_player)
 
     # Create bot players
@@ -34,7 +34,7 @@ async def create_game(
         bot_players.append(bot)
 
     # Create game
-    game = Game(status=GameStatus.WAITING)
+    game = Game(name=request.name, status=GameStatus.WAITING)
     session.add(game)
     session.commit()
     session.refresh(game)
@@ -59,18 +59,22 @@ async def create_game(
 @router.get("/{game_id}", response_model=GameStateResponse)
 async def get_game(
     game_id: UUID,
+    user_id: Optional[UUID] = None,
     session: Session = Depends(get_session)
 ):
     """Get current game state"""
-    return await get_game_state(game_id, session)
+    return await get_game_state(game_id, session, user_id=user_id)
 
 @router.post("/{game_id}/bid")
 async def submit_bid(
     game_id: UUID,
     request: BidRequest,
+    player_id: UUID,
     session: Session = Depends(get_session)
 ):
     """Submit a bid for the current round"""
+    # Override player_id from query param to match frontend
+    request.player_id = player_id
     game = session.get(Game, game_id)
     if not game:
         raise HTTPException(status_code=404, detail="Game not found")
@@ -146,10 +150,67 @@ async def submit_bid(
 
     return {"success": True, "bid": request.bid}
 
+@router.post("/{game_id}/join", response_model=GameStateResponse)
+async def join_game(
+    game_id: UUID,
+    user_id: UUID,
+    session: Session = Depends(get_session)
+):
+    """Join an existing game"""
+    game = session.get(Game, game_id)
+    if not game:
+        raise HTTPException(status_code=404, detail="Game not found")
+
+    # Check if player already in game
+    existing_gp = session.exec(
+        select(GamePlayer)
+        .where(GamePlayer.game_id == game_id)
+        .where(GamePlayer.player_id == user_id)
+    ).first()
+
+    if existing_gp:
+        return await get_game_state(game_id, session)
+
+    # Check if game is full
+    players_count = len(session.exec(
+        select(GamePlayer).where(GamePlayer.game_id == game_id)
+    ).all())
+
+    if players_count >= WizardGameEngine.NUM_PLAYERS:
+        raise HTTPException(status_code=400, detail="Game is full")
+
+    # Add player
+    game_player = GamePlayer(
+        game_id=game_id,
+        player_id=user_id,
+        position=players_count
+    )
+    session.add(game_player)
+    session.commit()
+
+    return await get_game_state(game_id, session)
+
+@router.post("/{game_id}/start")
+async def start_game_endpoint(
+    game_id: UUID,
+    session: Session = Depends(get_session)
+):
+    """Start the game"""
+    game = session.get(Game, game_id)
+    if not game:
+        raise HTTPException(status_code=404, detail="Game not found")
+
+    if game.status != GameStatus.WAITING:
+        raise HTTPException(status_code=400, detail="Game already started")
+
+    await start_round(game_id, session)
+    return {"success": True}
+
 @router.post("/{game_id}/play")
 async def play_card(
     game_id: UUID,
     request: PlayCardRequest,
+    player_id: UUID,
     session: Session = Depends(get_session)
 ):
     """Play a card"""
@@ -164,18 +225,18 @@ async def play_card(
     game_player = session.exec(
         select(GamePlayer)
         .where(GamePlayer.game_id == game_id)
-        .where(GamePlayer.player_id == request.player_id)
+        .where(GamePlayer.player_id == player_id)
     ).first()
 
     if not game_player:
         raise HTTPException(status_code=404, detail="Player not in game")
 
     hand = [Card.from_dict(c) for c in json.loads(game_player.hand)]
-    card_to_play = Card.from_dict(request.card)
 
-    # Validate card is in hand
-    if card_to_play not in hand:
-        raise HTTPException(status_code=400, detail="Card not in hand")
+    if request.card_index < 0 or request.card_index >= len(hand):
+        raise HTTPException(status_code=400, detail="Invalid card index")
+
+    card_to_play = hand[request.card_index]
 
     # Validate play
     current_trick_data = json.loads(game.current_trick)
@@ -191,7 +252,7 @@ async def play_card(
     # Add to current trick
     current_trick_data.append({
         "card": card_to_play.to_dict(),
-        "player_id": str(request.player_id)
+        "player_id": str(player_id)
     })
     game.current_trick = json.dumps(current_trick_data)
 
@@ -377,7 +438,7 @@ async def end_round(game: Game, session: Session):
 
     session.commit()
 
-async def get_game_state(game_id: UUID, session: Session) -> GameStateResponse:
+async def get_game_state(game_id: UUID, session: Session, user_id: Optional[UUID] = None) -> GameStateResponse:
     """Helper to build game state response"""
     game = session.get(Game, game_id)
     if not game:
@@ -390,6 +451,8 @@ async def get_game_state(game_id: UUID, session: Session) -> GameStateResponse:
     ).all()
 
     players_data = []
+    current_player_id = None
+    user_hand = None
     for gp in game_players:
         player = session.get(Player, gp.player_id)
         players_data.append({
@@ -399,12 +462,22 @@ async def get_game_state(game_id: UUID, session: Session) -> GameStateResponse:
             "score": gp.total_score,
             "position": gp.position
         })
+        if gp.position == game.current_player_index:
+            current_player_id = player.id
+
+        if user_id and player.id == user_id:
+            user_hand = json.loads(gp.hand)
 
     return GameStateResponse(
-        game_id=game.id,
+        id=game.id,
+        name=game.name,
         status=game.status,
         current_round=game.current_round,
+        max_rounds=game.max_rounds,
         trump_suit=game.trump_suit,
         players=players_data,
-        current_trick=json.loads(game.current_trick)
+        current_trick=json.loads(game.current_trick),
+        current_player_index=game.current_player_index,
+        current_player_id=current_player_id,
+        hand=user_hand
     )
