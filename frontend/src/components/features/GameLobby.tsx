@@ -16,7 +16,7 @@ export const GameLobby: React.FC = () => {
       const player = await apiService.createPlayer(playerName);
       setCurrentPlayer(player);
       const game = await apiService.createGame(playerName);
-      await apiService.joinGame(game.id, player.id);
+      // await apiService.joinGame(game.id, player.id);
       navigate(`/game/${game.id}`);
     } catch (error) {
       console.error('Error creating game:', error);
