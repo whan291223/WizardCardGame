@@ -6,6 +6,7 @@ from app.models.game import GameStatus
 class GameCreate(BaseModel):
     name: str
     player_name: Optional[str] = "Human"
+    player_id: Optional[UUID] = None
 
 class GameStateResponse(BaseModel):
     id: UUID

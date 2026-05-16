@@ -22,9 +22,14 @@ async def create_game(
 ):
     """Create a new game with 1 human player and 3 bots"""
 
-    # Create human player
-    human_player = Player(name=request.player_name or "Human", is_bot=False)
-    session.add(human_player)
+    # Get or create human player
+    if request.player_id:
+        human_player = session.get(Player, request.player_id)
+        if not human_player:
+            raise HTTPException(status_code=404, detail="Player not found")
+    else:
+        human_player = Player(name=request.player_name or "Human", is_bot=False)
+        session.add(human_player)
 
     # Create bot players
     bot_players = []
@@ -54,7 +59,7 @@ async def create_game(
     # Start first round
     await start_round(game.id, session)
 
-    return await get_game_state(game.id, session)
+    return await get_game_state(game.id, session, user_id=human_player.id)
 
 @router.get("/{game_id}", response_model=GameStateResponse)
 async def get_game(

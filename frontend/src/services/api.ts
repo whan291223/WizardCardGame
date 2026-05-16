@@ -45,10 +45,11 @@ class ApiService {
   }
 
   // Game endpoints
-  async createGame(playerName: string): Promise<GameState> {
+  async createGame(playerName: string, playerId?: string): Promise<GameState> {
     const response = await this.client.post('/games/', {
       name: `${playerName}'s Game`,
       player_name: playerName,
+      player_id: playerId,
     });
     return response.data;
   }
